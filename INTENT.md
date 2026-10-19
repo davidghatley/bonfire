@@ -18,10 +18,10 @@ Status: placeholder name · written 2026-10-17 from David's direction · **this 
 - Not the old gauntlet repo's 'evidence-driven artifact improvement' scope.
 
 ## The proving demo
-One gauntlet loop fans out **4 parallel workers** on a real task (first: building one game from a prep pack), merges the result, and **the run survives a forced restart** mid-way.
+One gauntlet loop fans out **4 parallel workers** on a real task (first: building one small game), merges the result, and **the run survives a forced restart** mid-way.
 
 ## Interface to the stack
-Input: a task + a prep pack (from mise_en_place) + check definitions. Calls nibble for typed choices. Output: artifacts + `runs/<id>/` logs (events, decisions, costs/tokens burned; the bonfire meter is part of the brand).
+Input: a task + an optional prep folder (from mise_en_place) + check definitions. Calls nibble for typed choices. Output: artifacts + `runs/<id>/` logs (events, decisions, costs/tokens burned; the bonfire meter is part of the brand).
 
 ## Starting point
 The fork base chosen in 0001. Old gauntlet repo is illustration only.
