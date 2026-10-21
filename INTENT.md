@@ -4,10 +4,14 @@
 
 Status: placeholder name · written 2026-10-17 from David's direction · **this file changes only when David agrees.**
 
+## Note from David (2026-10-20): keep it lit
+bonfire is the rename of gauntlet. It should be about parallelizing work: many different tasks running at once, kept running continuously for a long time. David likes the bonfire idea for exactly that: you keep the fire lit, and it keeps doing tasks for a long time. Lean on that image in naming, copy and demos (feeding the fire = queueing tasks; the fire staying lit = runs that last and survive restarts; the burn = the token meter).
+
 ## What it is
 - David's own harness: a fork of, extension to, or thin core on top of pi or opencode (decided in docs/decisions/0001-fork-base.md).
 - First-class **gauntlet loops**: propose → evaluate → critique → verify, repeated until an artifact passes explicit checks.
 - **Fan-out**: one loop forks parallel workers down different paths and merges or picks results.
+- **Many tasks, kept going**: a queue of different tasks running in parallel, continuously, for hours or days, not just one loop at a time.
 - **Durable**: a run survives a crash or restart and resumes where it was.
 - Logs every decision point in a form nibble can train on.
 
