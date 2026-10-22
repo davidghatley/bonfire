@@ -1,0 +1,342 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>bonfire: local agent harness for long-running parallel agents</title>
+<meta name="description" content="bonfire is a local agent harness for parallel coding agents: many tasks running for days, a propose, evaluate, critique, verify loop, and resume after a crash. In development.">
+<meta property="og:title" content="bonfire: keep the fire lit. Many agents, many tasks, running for days.">
+<meta property="og:description" content="A local agent harness for parallel coding agents, with a propose, evaluate, critique, verify loop and resume after a crash. In development.">
+<meta property="og:image" content="variants/b/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 5 5' shape-rendering='crispEdges'%3E%3Cpath fill='%232236b0' d='M2 0h1v1H2zM1 1h2v1H1zM1 2h3v1H1zM0 3h2v1H0zM3 3h2v1H3zM0 4h1v1H0zM2 4h1v1H2zM4 4h1v1H4z'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..900&family=IBM+Plex+Mono:wght@400;500;600&family=Newsreader:ital,opsz,wght@1,6..72,400&display=swap">
+<link rel="stylesheet" href="assets/tokens.css">
+<link rel="stylesheet" href="assets/components.css">
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+  body { margin: 0; background: var(--paper); color: var(--ink); font: 400 16px/1.6 var(--font-sans); }
+  a { color: var(--cobalt-text); text-underline-offset: 3px; }
+  :focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+  .skip { position: absolute; left: -999px; top: 8px; background: var(--ink); color: var(--paper); padding: 8px 12px; z-index: 10; }
+  .skip:focus { left: 72px; }
+  .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  /* frame: cobalt spine on the left edge, content on plaster */
+  .frame { display: grid; grid-template-columns: 56px minmax(0, 1fr); min-height: 100vh; }
+  .ss-spine { position: sticky; top: 0; height: 100vh; }
+  .ss-spine svg { display: block; }
+  .page { width: 100%; max-width: 1336px; margin: 0 auto; padding: 0 48px; }
+
+  .runhead { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 20px 0 12px; border-bottom: 1px solid var(--ink); }
+  .runhead nav { display: flex; gap: 24px; }
+  .runhead a { color: var(--ink); text-decoration: none; }
+  .runhead a:hover { text-decoration: underline; }
+  .runhead .word { font-family: var(--font-display); font-weight: 850; font-stretch: 125%; font-size: 20px; letter-spacing: -.01em; text-transform: none; color: var(--ink); }
+
+  /* hero */
+  .hero { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 48px; padding: 48px 0 64px; align-items: start; }
+  .hero h1 { font-family: var(--font-display); font-size: 72px; line-height: .92; font-weight: 850; letter-spacing: -.025em; margin: 24px 0 24px; }
+  .hero .lead { font-size: 20px; line-height: 1.45; margin: 0 0 32px; max-width: 30em; }
+  .ctas { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .btn { display: inline-block; font: 600 13px/1 var(--font-mono); letter-spacing: .12em; text-transform: uppercase; padding: 16px 20px; border: 1.5px solid var(--ink); text-decoration: none; color: var(--ink); background: var(--sheet); }
+  .btn--primary { background: var(--cobalt); border-color: var(--cobalt); color: var(--on-cobalt); }
+  .btn:hover { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+  .status { margin: 20px 0 0; display: flex; align-items: center; gap: 10px; }
+  .status i { font: italic 400 16px/1.4 var(--font-serif); color: var(--ink-muted); }
+
+  .fig svg { display: block; width: 100%; height: auto; }
+  .fig .compact { display: none; }
+  .hero .ss-plate__body { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .hero .ss-key { grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); border-left: 0; padding-left: 0; border-top: 1px solid var(--rule); padding-top: 16px; }
+
+  /* sections */
+  section { padding: 64px 0; border-top: 1px solid var(--ink); }
+  .shead { display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 32px; }
+  h2 { font-family: var(--font-display); font-size: 48px; line-height: .95; font-weight: 800; letter-spacing: -.015em; margin: 0 0 24px; }
+  h3 { font-size: 20px; line-height: 1.25; font-weight: 650; margin: 0 0 8px; }
+  .problem p { font-size: 32px; line-height: 1.2; font-weight: 650; letter-spacing: -.01em; margin: 0; max-width: 24em; }
+  .problem p em { font-style: normal; color: var(--vermilion-text); }
+
+  .benefits { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+  .benefits .ss-plate { display: flex; flex-direction: column; }
+  .benefits p { margin: 0; }
+  .benefits .ss-plate__cap { margin-top: auto; padding-top: 16px; font-size: 16px; }
+  .bfig { height: 72px; margin: 4px 0 16px; }
+  .bfig svg { height: 100%; width: auto; display: block; }
+
+  .steps { list-style: none; padding: 0; margin: 0 0 32px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 32px; counter-reset: s; }
+  .steps li { counter-increment: s; border-top: 3px solid var(--ink); padding-top: 16px; }
+  .steps li::before { content: counter(s); display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: var(--radius-disc); border: 1px solid var(--ink); font: 600 13px/1 var(--font-mono); margin-bottom: 12px; }
+  .steps p { margin: 0; }
+  .builders { font: 400 13px/1.5 var(--font-mono); color: var(--ink-muted); max-width: 60em; margin: 0; }
+
+  .demo { display: grid; grid-template-columns: minmax(0, 1fr) 13rem; gap: 32px; align-items: start; }
+  .beats { list-style: none; margin: 0; padding: 0; counter-reset: b; }
+  .beats li { counter-increment: b; display: grid; grid-template-columns: 40px minmax(0, 1fr); gap: 16px; padding: 16px 0; border-bottom: 1px solid var(--rule); }
+  .beats li::before { content: counter(b, decimal-leading-zero); font: 600 13px/1.9 var(--font-mono); color: var(--ink-muted); }
+  .beats li.crash::before { color: var(--vermilion-text); }
+  .beats p { margin: 0; max-width: 40em; }
+  .beats li.crash p { font-weight: 650; }
+
+  .fit { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 32px; }
+  .fit ul { list-style: none; padding: 0; margin: 12px 0 0; }
+  .fit li { padding: 12px 0; border-bottom: 1px solid var(--rule); }
+
+  .stack { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; list-style: none; padding: 0; margin: 24px 0 0; }
+  .stack li { background: var(--sheet); border: 1px solid var(--rule); padding: 16px; }
+  .stack svg { width: 30px; height: 30px; display: block; margin-bottom: 12px; color: var(--ink); }
+  .stack b { display: block; font-weight: 700; margin-bottom: 4px; }
+  .stack p { margin: 0; font-size: 15px; line-height: 1.45; }
+  .intro { max-width: 40em; margin: 0; }
+
+  details { border-bottom: 1px solid var(--rule); }
+  details:first-of-type { border-top: 1px solid var(--rule); }
+  summary { cursor: pointer; padding: 16px 0; font-size: 20px; font-weight: 650; list-style: none; display: flex; justify-content: space-between; gap: 16px; }
+  summary::-webkit-details-marker { display: none; }
+  summary::after { content: "+"; font: 500 20px/1 var(--font-mono); color: var(--cobalt-text); }
+  details[open] summary::after { content: "−"; }
+  details p { margin: 0 0 20px; max-width: 42em; }
+
+  footer { border-top: 3px solid var(--ink); padding: 32px 0 48px; display: flex; justify-content: space-between; align-items: end; gap: 24px; flex-wrap: wrap; }
+  footer p { margin: 0; font-size: 20px; line-height: 1.4; max-width: 34em; }
+  .ss-lockup svg { width: 28px; height: 28px; color: var(--ink); }
+
+  @media (max-width: 1100px) {
+    .hero { grid-template-columns: minmax(0, 1fr); }
+    .benefits, .stack { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+  @media (max-width: 720px) {
+    .frame { grid-template-columns: minmax(0, 1fr); }
+    .ss-spine { position: static; height: auto; width: auto; flex-direction: row; padding: 10px 16px; }
+    .ss-spine .ss-spine__title, .ss-spine .ss-spine__run { writing-mode: horizontal-tb; transform: none; }
+    .ss-spine .ss-spine__title { font-size: 25px; }
+    .page { padding: 0 16px; }
+    .runhead { display: none; }
+    .hero { padding: 32px 0 48px; gap: 32px; }
+    .hero h1 { font-size: 48px; }
+    .hero .lead { font-size: 18px; }
+    .fig .wide { display: none; } .fig .compact { display: block; }
+    .hero .ss-key { grid-template-columns: minmax(0, 1fr); }
+    h2 { font-size: 32px; }
+    .problem p { font-size: 25px; }
+    .shead, .demo, .fit, .benefits, .steps, .stack { grid-template-columns: minmax(0, 1fr); }
+    .shead { gap: 8px; }
+    section { padding: 48px 0; }
+  }
+</style>
+<style id="art-css"></style>
+</head>
+<body>
+<a class="skip" href="#main">Skip to content</a>
+<div class="frame">
+  <aside class="ss-spine" aria-hidden="true">
+    <svg class="ss-spine__glyph" viewBox="0 0 5 5" data-glyph="bonfire"></svg>
+    <span class="ss-spine__title">bonfire</span>
+    <span class="ss-spine__run">Agent harness · in build</span>
+  </aside>
+
+  <div class="page">
+    <header class="runhead ss-label">
+      <span class="word">bonfire</span>
+      <nav aria-label="Sections">
+        <a href="#how">How it works</a>
+        <a href="#see-it-work">See it work</a>
+        <a href="#differs">How it differs</a>
+        <a href="#faq">FAQ</a>
+      </nav>
+    </header>
+
+    <main id="main">
+      <div class="hero">
+        <div>
+          <span class="ss-pill ss-pill--info">In build</span>
+          <h1>Keep the fire lit: many agents, many tasks, running for days.</h1>
+          <p class="lead">A local agent harness for parallel coding agents, with a propose, evaluate, critique, verify loop and resume after a crash. In development.</p>
+          <div class="ctas">
+            <a class="btn btn--primary" href="#see-it-work">Watch it get built</a>
+            <a class="btn" href="https://github.com/davidghatley/bonfire/blob/main/INTENT.md">Read the plan</a>
+          </div>
+          <p class="status"><i>In build. Follow along.</i></p>
+        </div>
+
+        <figure class="ss-plate" style="margin:0">
+          <div class="ss-plate__head ss-label"><span><b>Plate 1</b> · the run</span><span>Example · target demo</span></div>
+          <div class="ss-plate__body">
+            <div class="fig">
+              <svg class="wide is-anim" id="fig-wide" role="img" aria-labelledby="fig-t fig-d"><title id="fig-t">How a bonfire run works</title><desc id="fig-d">A job card with three checks fans out to four agents, each saving its steps as filled squares. A forced restart cuts across all four lanes; each lane carries on from its last saved step. A fresh reviewer reads each lane, a separate check verifies the reviews, and the best work is merged into a result that passes three of three checks.</desc></svg>
+              <svg class="compact is-anim" id="fig-compact" role="img" aria-labelledby="fig-t fig-d"></svg>
+            </div>
+            <ol class="ss-key">
+              <li><b>Job + checks</b><i>what to build, and the tests that prove it</i></li>
+              <li><b>Four copies</b><i>each agent works on its own copy at once</i></li>
+              <li class="is-focal"><b>Forced restart</b><i>every lane resumes from its last saved step</i></li>
+              <li><b>Fresh review</b><i>a new reviewer reads each result</i></li>
+              <li><b>Verify, merge</b><i>a separate check confirms the review; the best work is merged</i></li>
+            </ol>
+          </div>
+          <figcaption class="ss-plate__cap">Drawn before it exists: the target demo, with example checks.</figcaption>
+        </figure>
+      </div>
+
+      <section class="problem" aria-labelledby="problem-h">
+        <div class="shead">
+          <h2 class="ss-label" id="problem-h">The problem</h2>
+          <p>You leave a pile of work with AI agents overnight. Some say they're done, <em>then the tests fail.</em> Others died at 2 a.m. and you start over.</p>
+        </div>
+      </section>
+
+      <section aria-labelledby="benefits-h">
+        <h2 class="vh" id="benefits-h">What you get</h2>
+        <div class="benefits">
+          <article class="ss-plate">
+            <div class="ss-plate__head ss-label"><span><b>2.1</b> · self-checking</span></div>
+            <div class="bfig" aria-hidden="true"><svg viewBox="0 0 120 60"><rect x="1" y="6" width="48" height="48" fill="none" stroke="currentColor"/><g fill="var(--cobalt)"><rect x="8" y="14" width="8" height="8"/><rect x="8" y="27" width="8" height="8"/><rect x="8" y="40" width="8" height="8"/></g><g fill="var(--ink)"><rect x="21" y="16" width="22" height="3"/><rect x="21" y="29" width="18" height="3"/><rect x="21" y="42" width="24" height="3"/></g><path d="M58 30h30" stroke="var(--ink)" stroke-width="1.5"/><rect x="92" y="14" width="26" height="32" fill="var(--cobalt)"/></svg></div>
+            <h3>Unattended work that checks itself</h3>
+            <p>Each task runs a propose, evaluate, critique, verify loop (a generator-evaluator loop) until the result meets your bar, so you don't have to sit and watch.</p>
+            <p class="ss-plate__cap">Example: you write “the game builds, every test passes, and the player can reach level two.” The task stops only when all three are true.</p>
+          </article>
+          <article class="ss-plate">
+            <div class="ss-plate__head ss-label"><span><b>2.2</b> · parallel</span></div>
+            <div class="bfig" aria-hidden="true"><svg viewBox="0 0 120 60"><g fill="none" stroke="var(--cobalt)" stroke-width="1.5"><path d="M2 30C20 30 20 6 36 6H84C100 6 100 30 118 30"/><path d="M2 30C20 30 20 22 36 22H84C100 22 100 30 118 30"/><path d="M2 30C20 30 20 38 36 38H84C100 38 100 30 118 30"/><path d="M2 30C20 30 20 54 36 54H84C100 54 100 30 118 30"/></g><g fill="var(--ink)"><rect x="40" y="2" width="8" height="8"/><rect x="56" y="2" width="8" height="8"/><rect x="40" y="18" width="8" height="8"/><rect x="40" y="34" width="8" height="8"/><rect x="56" y="34" width="8" height="8"/><rect x="72" y="34" width="8" height="8"/><rect x="40" y="50" width="8" height="8"/></g></svg></div>
+            <h3>Many agents, many tasks</h3>
+            <p>Parallel coding agents work different tasks at once, or different paths through one task, and bonfire keeps the best result or a mix of them. A local queue of hundreds of tasks is planned.</p>
+            <p class="ss-plate__cap">Example: on one task, one agent builds the jump with real physics and another snaps it to a grid. You get the winner and a note on why it won.</p>
+          </article>
+          <article class="ss-plate">
+            <div class="ss-plate__head ss-label"><span><b>2.3</b> · resume</span></div>
+            <div class="bfig" aria-hidden="true"><svg viewBox="0 0 120 60"><path d="M4 30H116" stroke="var(--cobalt)" stroke-width="1.5"/><g fill="var(--ink)"><rect x="8" y="24" width="12" height="12"/><rect x="26" y="24" width="12" height="12"/><rect x="44" y="24" width="12" height="12"/><rect x="74" y="24" width="12" height="12"/><rect x="92" y="24" width="12" height="12"/></g><path d="M65 4l4 8-8 8 8 8-8 8 8 8-8 8 4 4" fill="none" stroke="var(--vermilion)" stroke-width="3"/></svg></div>
+            <h3>Resume after a crash</h3>
+            <p>Every step is saved as a checkpoint when it finishes (durable execution), so a crash or restart carries on where it stopped. That is what lets runs last for days.</p>
+            <p class="ss-plate__cap">Example: force-quit halfway and restart. Each agent resumes from its last saved step, and no finished work is redone.</p>
+          </article>
+        </div>
+      </section>
+
+      <section id="how" aria-labelledby="how-h">
+        <h2 id="how-h">How it works</h2>
+        <ol class="steps">
+          <li><h3>Feed the fire.</h3><p>Queue your tasks, each with the checks that prove it's done, like your tests.</p></li>
+          <li><h3>Leave it burning.</h3><p>Agents work in parallel, each on its own copy of the project. If the machine restarts, they pick up where they stopped.</p></li>
+          <li><h3>Come back to results and a receipt.</h3><p>You get the finished work plus a log of every choice and every token burned. A live token-burn meter is planned.</p></li>
+        </ol>
+        <p class="builders">For builders: bonfire is an agent harness (the program that runs agents), built around one generator-evaluator loop that proposes, evaluates, critiques and verifies. We call it a gauntlet. Long-running agents are a live idea: <a href="https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents">Anthropic</a> has written about harnesses for them, and <a href="https://cursor.com/blog/scaling-agents">Cursor</a> about running coding agents for weeks. bonfire is a local take on it.</p>
+      </section>
+
+      <section id="see-it-work" aria-labelledby="see-h">
+        <h2 id="see-h">See it work</h2>
+        <div class="demo">
+          <ol class="beats">
+            <li><p>You feed bonfire a queue of jobs and go to bed. One is “Make a one-screen game where a frog crosses a busy road”, with a prep folder from Mise en Place (research and context gathered for the job) and three checks.</p></li>
+            <li><p>Parallel agents start at once, each on its own copy. On the frog job, four of them take different paths: smooth movement, grid hops, the cars, the score screen.</p></li>
+            <li class="crash"><p>Halfway, you kill the process. Nothing graceful. You start it again.</p></li>
+            <li><p>The agents pick up from their last saved step and finish. A fresh reviewer reads each game, a separate check confirms the reviewer's claims, and bonfire merges the best work into one game that passes all three checks.</p></li>
+            <li><p>In the morning, the run folder shows every decision, in order, and the token meter shows how many tokens went up in smoke.</p></li>
+          </ol>
+          <aside class="ss-note ss-note--trap"><span class="ss-note__tag">Status</span><p class="ss-note__body" style="margin:0"><em>Target demo. Not built yet. The game and checks are examples.</em></p></aside>
+        </div>
+      </section>
+
+      <section id="differs" aria-labelledby="differs-h">
+        <h2 id="differs-h">How bonfire differs</h2>
+        <p class="intro">Plenty of tools run coding agents in parallel, and they are worth a look: Orchestrator.inc, Orca, Conductor and Munder Difflin, for example. Most of what we found is built mainly for a person watching, steering and reviewing agents. bonfire is aimed at the other case.</p>
+        <div class="fit">
+          <div>
+            <span class="ss-pill ss-pill--mute">A cockpit for you</span>
+            <ul>
+              <li>An app you keep open, to watch agents work.</li>
+              <li>You review the results, branch by branch.</li>
+              <li>Built for the hours you're at the desk.</li>
+            </ul>
+          </div>
+          <div>
+            <span class="ss-pill ss-pill--ok">bonfire, a headless harness</span>
+            <ul>
+              <li>You queue tasks and leave. It runs unattended, overnight or for days. <i>Planned: a queue of hundreds.</i></li>
+              <li>It verifies its own work with a propose, evaluate, critique, verify loop before you see it.</li>
+              <li>It resumes after a crash from the last saved step, and shows a live token-burn meter. <i>Meter planned.</i></li>
+            </ul>
+          </div>
+        </div>
+        <p class="builders">Status: in development. Nothing here has shipped, and the rival descriptions come from their public pages and search snippets. If you want to watch and steer agents yourself, a cockpit fits better.</p>
+      </section>
+
+      <section aria-labelledby="who-h">
+        <h2 id="who-h">Who it's for</h2>
+        <div class="fit">
+          <div>
+            <span class="ss-pill ss-pill--ok">For you if</span>
+            <ul>
+              <li>You have many tasks you want running overnight or for days.</li>
+              <li>You want proof the agent's output works, and a record of what it cost.</li>
+              <li>You've lost a long agent session to a crash or a closed laptop.</li>
+            </ul>
+          </div>
+          <div>
+            <span class="ss-pill ss-pill--bad">Not for you if</span>
+            <ul>
+              <li>You want everyday coding chat. Claude Code, pi and opencode already do that well.</li>
+              <li>You want a hosted service. bonfire runs on your own machine.</li>
+              <li>You want a dashboard to watch agents. bonfire is headless.</li>
+              <li>You want ten ways to wire agents together. bonfire has one loop.</li>
+            </ul>
+          </div>
+        </div>
+      </section>
+
+      <section aria-labelledby="fits-h">
+        <h2 id="fits-h">How it fits</h2>
+        <p class="intro">bonfire runs the work in a set of five tools David Hatley is building for making things with AI agents.</p>
+        <ul class="stack">
+          <li><svg viewBox="0 0 5 5" data-glyph="mise_en_place" aria-hidden="true"></svg><b>Mise en Place</b><p>does the prep for any project (research, assets, references, context), so you or your agents start on the work.</p></li>
+          <li><svg viewBox="0 0 5 5" data-glyph="nibble" aria-hidden="true"></svg><b>nibble</b><p>answers an agent's multiple-choice questions fast and says how sure it is.</p></li>
+          <li><svg viewBox="0 0 5 5" data-glyph="playdough" aria-hidden="true"></svg><b>playdough</b><p>turns one sentence into a small game you can play from a link.</p></li>
+          <li><svg viewBox="0 0 5 5" data-glyph="napkin" aria-hidden="true"></svg><b>napkin <span class="ss-pill ss-pill--mute">first build</span></b><p>is a design canvas where you and an AI agent edit the same React components, live.</p></li>
+        </ul>
+      </section>
+
+      <section id="faq" aria-labelledby="faq-h">
+        <h2 id="faq-h">FAQ</h2>
+        <details><summary>Why not just run Claude Code in a loop?</summary><p>For short jobs, do that (people call it a Ralph loop). For long ones, bonfire adds a queue of tasks, parallel agents, a fresh reviewer, a check on the reviewer, and progress you can resume after a crash.</p></details>
+        <details><summary>Doesn't running many agents at once burn a lot of tokens?</summary><p>Yes, and the reviewers add more. That's the joke in the name. Every run logs the tokens burned at each step, and a live token-burn meter is planned, so you see what the fire cost.</p></details>
+        <details><summary>Can it really run for days?</summary><p>That is the goal, not yet shown. The first proof is the demo above: kill a run mid-way and watch it resume.</p></details>
+        <details><summary>Why is it called a gauntlet?</summary><p>Gauntlet is our name for the loop, and the project's earlier name. It is a generator-evaluator loop: propose, evaluate, critique, verify, repeated until the checks pass.</p></details>
+        <details><summary>Is it a fork of pi or opencode?</summary><p>Not decided. The proposal is a thin core on pi's crash-safe runtime library, with no fork. David makes the call.</p></details>
+        <details><summary>Does my code leave my machine?</summary><p>It runs locally, with no hosted version. The agents still send prompts to their AI model.</p></details>
+        <details><summary>Can I try it today?</summary><p>No. Nothing has shipped. Read the plan, and watch it get built.</p></details>
+      </section>
+    </main>
+
+    <footer>
+      <p>bonfire is a local agent harness for parallel, long-running coding agents: many tasks kept going, every result checked by a propose, evaluate, critique, verify loop, and resume after a crash. In development.</p>
+      <span class="ss-lockup">
+        <svg viewBox="0 0 7 7" data-glyph="mark" role="img" aria-label="dh mark"></svg>
+        <span class="ss-lockup__lead"></span>
+        <span class="ss-lockup__name">David Hatley</span>
+      </span>
+    </footer>
+  </div>
+</div>
+
+<script src="assets/glyphs.js"></script>
+<script src="assets/art-common.js"></script>
+<script src="variants/a/art.js"></script>
+<script>
+  // pantry glyphs drawn in currentColor so they follow the theme
+  document.querySelectorAll("[data-glyph]").forEach((el) => {
+    el.setAttribute("shape-rendering", "crispEdges");
+    el.innerHTML = BONFIRE_ART.glyph(el.dataset.glyph, 0, 0, 1, "currentColor");
+  });
+  document.getElementById("art-css").textContent = BONFIRE_A.CSS;
+  for (const [id, compact] of [["fig-wide", false], ["fig-compact", true]]) {
+    const el = document.getElementById(id), f = BONFIRE_A.loop({ compact });
+    el.setAttribute("viewBox", `0 0 ${f.w} ${f.h}`);
+    el.insertAdjacentHTML("beforeend", f.svg);
+  }
+</script>
+</body>
+</html>
